@@ -18,6 +18,7 @@ Funkcja dekodująca konwertuje binarną reprezentację genomu na wartości rzecz
 
 ### 3. Fitness
 Funkcja oceny, która oblicza wartość funkcji Rastrigina dla danego genomu. W tym przypadku chcemy minimalizować wartość funkcji Rastrigina, więc negujemy jej wartość.
+Natomiast jeżeli chcemy szukać maksimum funkcji należy usunąć minus z linii `return -rastrigin(x);` w linii `39`.
 
 ### 4. Mutate
 Funkcja mutacji wprowadza niewielkie zmiany w genomie z pewnym prawdopodobieństwem. Mutacja jest kluczowym elementem algorytmów genetycznych, który zapobiega stagnacji populacji.
