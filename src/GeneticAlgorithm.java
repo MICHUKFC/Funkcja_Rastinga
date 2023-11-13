@@ -1,5 +1,4 @@
-import java.util.Random;
-import java.util.Arrays;
+import java.util.*;
 import java.util.stream.IntStream;
 
 public class GeneticAlgorithm {
@@ -7,7 +6,7 @@ public class GeneticAlgorithm {
     private static final double OMEGA = 2 * Math.PI * 20;
     private static final int POPULATION_SIZE = 100;
     private static final int GENOME_LENGTH = 5; // Długość łańcucha dla jednej zmiennej
-    private static final double MUTATION_RATE = 0.01;
+    private static final double MUTATION_RATE = 0.02;
     private static final int GENERATIONS = 1000;
     private static final int DIMENSIONS = 3; // n-wymiarowy problem
     private static final int TOURNAMENT_SIZE = 5;
@@ -57,6 +56,64 @@ public class GeneticAlgorithm {
         };
     }
 
+    public static String[] twoPointCrossover(String parent1, String parent2) {
+        int point1 = random.nextInt(parent1.length());
+        int point2 = random.nextInt(parent1.length());
+        if (point1 > point2) {
+            int temp = point1;
+            point1 = point2;
+            point2 = temp;
+        }
+        String child1 = parent1.substring(0, point1) + parent2.substring(point1, point2) + parent1.substring(point2);
+        String child2 = parent2.substring(0, point1) + parent1.substring(point1, point2) + parent2.substring(point2);
+        return new String[]{child1, child2};
+    }
+
+    public static String[] multiPointCrossover(String parent1, String parent2, int numberOfPoints) {
+        Set<Integer> points = new TreeSet<>();
+        while (points.size() < numberOfPoints) {
+            points.add(random.nextInt(parent1.length()));
+        }
+
+        boolean switchParent = false;
+        StringBuilder child1 = new StringBuilder();
+        StringBuilder child2 = new StringBuilder();
+        int start = 0;
+        for (int point : points) {
+            if (switchParent) {
+                child1.append(parent2, start, point);
+                child2.append(parent1, start, point);
+            } else {
+                child1.append(parent1, start, point);
+                child2.append(parent2, start, point);
+            }
+            start = point;
+            switchParent = !switchParent;
+        }
+        child1.append(switchParent ? parent2.substring(start) : parent1.substring(start));
+        child2.append(switchParent ? parent1.substring(start) : parent2.substring(start));
+
+        return new String[]{child1.toString(), child2.toString()};
+    }
+
+    public static String[] uniformCrossover(String parent1, String parent2) {
+        StringBuilder child1 = new StringBuilder();
+        StringBuilder child2 = new StringBuilder();
+
+        for (int i = 0; i < parent1.length(); i++) {
+            if (random.nextBoolean()) {
+                child1.append(parent1.charAt(i));
+                child2.append(parent2.charAt(i));
+            } else {
+                child1.append(parent2.charAt(i));
+                child2.append(parent1.charAt(i));
+            }
+        }
+
+        return new String[]{child1.toString(), child2.toString()};
+    }
+
+
     public static String tournamentSelection(String[] population) {
         String best = null;
         double bestFitness = Double.NEGATIVE_INFINITY;
@@ -104,6 +161,27 @@ public class GeneticAlgorithm {
         return sortedPopulation[sortedPopulation.length - 1];
     }
 
+    public static String invert(String genome, double inversionRate) {
+        if (Math.random() < inversionRate) {
+            int startIndex = random.nextInt(genome.length());
+            int endIndex = random.nextInt(genome.length());
+            if (startIndex > endIndex) {
+                int temp = startIndex;
+                startIndex = endIndex;
+                endIndex = temp;
+            }
+            char[] chars = genome.toCharArray();
+            while (startIndex < endIndex) {
+                char temp = chars[startIndex];
+                chars[startIndex] = chars[endIndex];
+                chars[endIndex] = temp;
+                startIndex++;
+                endIndex--;
+            }
+            return new String(chars);
+        }
+        return genome;
+    }
     public static void main(String[] args) {
         String[] population = new String[POPULATION_SIZE];
 
@@ -121,9 +199,14 @@ public class GeneticAlgorithm {
             for (int i = 0; i < POPULATION_SIZE; i += 2) {
                 String parent1 = tournamentSelection(population);
                 String parent2 = rouletteSelection(population);
+
                 String[] children = crossover(parent1, parent2);
-                newPopulation[i] = mutate(children[0]);
-                newPopulation[i + 1] = mutate(children[1]);
+                //String[] children = twoPointCrossover(parent1, parent2);
+                //String[] children = multiPointCrossover(parent1, parent2,5);
+                //String[] children = uniformCrossover(parent1, parent2);
+
+                newPopulation[i] = invert(mutate(children[0]), MUTATION_RATE);
+                newPopulation[i + 1] = invert(mutate(children[1]), MUTATION_RATE);
             }
             population = newPopulation;
 
