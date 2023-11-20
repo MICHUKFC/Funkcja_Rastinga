@@ -1,16 +1,37 @@
 import java.util.*;
-import java.util.stream.IntStream;
 
 public class GeneticAlgorithm {
     private static final double A = 10.0;
     private static final double OMEGA = 2 * Math.PI * 20;
     private static final int POPULATION_SIZE = 100;
     private static final int GENOME_LENGTH = 5; // Długość łańcucha dla jednej zmiennej
-    private static final double MUTATION_RATE = 0.02;
-    private static final int GENERATIONS = 1000;
-    private static final int DIMENSIONS = 3; // n-wymiarowy problem
-    private static final int TOURNAMENT_SIZE = 5;
+    private static final double MUTATION_RATE = 0.01;
+    private static final int GENERATIONS = 100;
+    private static final int DIMENSIONS = 4; // n-wymiarowy problem
+    private static final int TOURNAMENT_SIZE = 5; // zmienna do selekcji turniejowej
     private static Random random = new Random();
+
+
+    // Klasa reprezentująca pojedynczy osobnik
+    private static class Individual {
+        String genome;
+        double fitness;
+
+        Individual(String genome) {
+            this.genome = genome;
+            this.fitness = GeneticAlgorithm.fitness(genome);
+        }
+
+        void mutate() {
+            this.genome = GeneticAlgorithm.mutate(this.genome);
+            this.fitness = GeneticAlgorithm.fitness(this.genome);
+        }
+
+        void invert(double rate) {
+            this.genome = GeneticAlgorithm.invert(this.genome, rate);
+            this.fitness = GeneticAlgorithm.fitness(this.genome);
+        }
+    }
 
     public static double rastrigin(double[] x) {
         int n = x.length;
@@ -32,6 +53,9 @@ public class GeneticAlgorithm {
         }
         return x;
     }
+
+
+    //Sprawdzenie minimum lub maksimum przy zmianie znaku na returnie (- lub +)
 
     public static double fitness(String genome) {
         double[] x = decode(genome);
@@ -182,35 +206,66 @@ public class GeneticAlgorithm {
         }
         return genome;
     }
-    public static void main(String[] args) {
-        String[] population = new String[POPULATION_SIZE];
 
+    // Metoda do wyboru rodzica z populacji
+    public static Individual tournamentSelection(Individual[] population) {
+        Individual best = null;
+        double bestFitness = Double.NEGATIVE_INFINITY;
+
+        for (int i = 0; i < TOURNAMENT_SIZE; i++) {
+            int index = random.nextInt(population.length);
+            if (population[index].fitness > bestFitness) {
+                bestFitness = population[index].fitness;
+                best = population[index];
+            }
+        }
+
+        return new Individual(best.genome); // Tworzenie kopii
+    }
+
+    // Metoda generująca nową generację
+    private static Individual[] generateNewGeneration(Individual[] population) {
+        Individual[] newGeneration = new Individual[POPULATION_SIZE];
+
+        for (int i = 0; i < POPULATION_SIZE; i += 2) {
+            Individual parent1 = tournamentSelection(population);
+            Individual parent2 = tournamentSelection(population);
+
+            String[] childrenGenomes = crossover(parent1.genome, parent2.genome);
+
+            Individual child1 = new Individual(childrenGenomes[0]);
+            Individual child2 = new Individual(childrenGenomes[1]);
+
+            child1.mutate();
+            child2.mutate();
+
+            child1.invert(MUTATION_RATE);
+            child2.invert(MUTATION_RATE);
+
+            newGeneration[i] = child1;
+            newGeneration[i + 1] = child2;
+        }
+
+        return newGeneration;
+    }
+    public static void main(String[] args) {
+        Individual[] population = new Individual[POPULATION_SIZE];
+
+        // Inicjalizacja populacji
         for (int i = 0; i < POPULATION_SIZE; i++) {
             StringBuilder genome = new StringBuilder();
             for (int j = 0; j < GENOME_LENGTH * DIMENSIONS; j++) {
                 genome.append(random.nextInt(2));
             }
-            population[i] = genome.toString();
+            population[i] = new Individual(genome.toString());
         }
 
+        // Główna pętla algorytmu
         for (int generation = 0; generation < GENERATIONS; generation++) {
-            population = Arrays.stream(population).sorted((a, b) -> Double.compare(fitness(b), fitness(a))).toArray(String[]::new);
-            String[] newPopulation = new String[POPULATION_SIZE];
-            for (int i = 0; i < POPULATION_SIZE; i += 2) {
-                String parent1 = tournamentSelection(population);
-                String parent2 = rouletteSelection(population);
+            Arrays.sort(population, Comparator.comparingDouble(a -> -a.fitness));
+            population = generateNewGeneration(population);
 
-                String[] children = crossover(parent1, parent2);
-                //String[] children = twoPointCrossover(parent1, parent2);
-                //String[] children = multiPointCrossover(parent1, parent2,5);
-                //String[] children = uniformCrossover(parent1, parent2);
-
-                newPopulation[i] = invert(mutate(children[0]), MUTATION_RATE);
-                newPopulation[i + 1] = invert(mutate(children[1]), MUTATION_RATE);
-            }
-            population = newPopulation;
-
-            System.out.println("Generation " + generation + ": " + Arrays.toString(decode(population[0])) + " = " + (-fitness(population[0])));
+            System.out.println("Generation " + generation + ": " + Arrays.toString(decode(population[0].genome)) + " = " + population[0].fitness);
         }
     }
 }
